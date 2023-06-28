@@ -14,7 +14,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lithammer/fuzzysearch/fuzzy"
-	"github.com/muesli/termenv"
+	"github.com/mattn/go-runewidth"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -34,6 +34,7 @@ func main() {
 
 type model struct {
 	Nodes             *v1.NodeList
+	FilteredNodes     map[string][]string
 	LabelKeys         []string
 	FilteredLabelKeys []string
 	Paginator         paginator.Model
@@ -78,8 +79,15 @@ func initialModel() model {
 	p.InactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render("•")
 	p.SetTotalPages(len(uniqueLabelKeys))
 
+	// Node names
+	nodeInfos := make(map[string][]string)
+	for _, node := range nodes.Items {
+		nodeInfos[node.Name] = []string{}
+	}
+
 	return model{
 		Nodes:             nodes,
+		FilteredNodes:     nodeInfos,
 		LabelKeys:         uniqueLabelKeys,
 		FilteredLabelKeys: uniqueLabelKeys,
 		Paginator:         p,
@@ -105,28 +113,84 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	m.TextInput, cmd = m.TextInput.Update(msg)
 	m.FilteredLabelKeys = fuzzy.Find(m.TextInput.Value(), m.LabelKeys)
+	// Filter nodes by label key
+	filteredNodes := make(map[string][]string)
+	for _, node := range m.Nodes.Items {
+		for labelKey := range node.Labels {
+			if contains(m.FilteredLabelKeys, labelKey) {
+				for _, filteredLabelKey := range m.FilteredLabelKeys {
+					color := hashToColorCode(hash(filteredLabelKey))
+					// styledLabelValue := termenv.String(node.Labels[filteredLabelKey]).Foreground(colorProfile.Color(color)).String()
+					// do same thing as above with lipgloss
+					styledLabelValue := lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(node.Labels[filteredLabelKey])
+					filteredNodes[node.Name] = append(filteredNodes[node.Name], styledLabelValue)
+				}
+				break
+			}
+		}
+	}
+	m.FilteredNodes = filteredNodes
 	m.Paginator.SetTotalPages(len(m.FilteredLabelKeys))
 
 	return m, cmd
 }
 
-var colorProfile = termenv.ColorProfile()
+var (
+	searcherModelStyle = lipgloss.NewStyle().
+				Width(60).
+				Height(20).
+				BorderStyle(lipgloss.NormalBorder()). // for Debugging
+				BorderForeground(lipgloss.Color("69"))
+
+	resultModelStyle = lipgloss.NewStyle().
+				MaxWidth(120).
+				Height(20).
+				BorderStyle(lipgloss.NormalBorder()). // for Debugging
+				BorderForeground(lipgloss.Color("96"))
+)
 
 func (m model) View() string {
-	var b strings.Builder
-
-	b.WriteString("Label list\n\n")
-	b.WriteString(m.TextInput.View() + "\n\n")
 	start, end := m.Paginator.GetSliceBounds(len(m.FilteredLabelKeys))
+
+	// Searcher view
+	var sb strings.Builder
+	sb.WriteString("Label list\n\n")
+	sb.WriteString(m.TextInput.View() + "\n\n")
+
 	for _, labelKey := range m.FilteredLabelKeys[start:end] {
 		color := hashToColorCode(hash(labelKey))
-		styledLabelKey := termenv.String(labelKey).Foreground(colorProfile.Color(color)).String()
-		b.WriteString(styledLabelKey + "\n")
+		// styledLabelKey := termenv.String(labelKey).Foreground(colorProfile.Color(color)).String()
+		// do same thing as above with lipgloss
+		styledLabelKey := lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(labelKey)
+		sb.WriteString(styledLabelKey + "\n")
 	}
-	b.WriteString("\n\n  " + m.Paginator.View())
-	b.WriteString("\n\n  ←/→ page • ctrl+c: quit\n")
+	sb.WriteString("\n\n  " + m.Paginator.View())
+	sb.WriteString("\n\n  ←/→ page • ctrl+c: quit\n")
 
-	return b.String()
+	// Result view
+	var rb strings.Builder
+
+	rb.WriteString("Node list\n\n")
+
+	for _, name := range sortedKeys(m.FilteredNodes) {
+		line := name + ":"
+		for _, labelValue := range m.FilteredNodes[name] {
+			if len(line) > 150 {
+				line += " ..."
+				break
+			}
+
+			line += " "
+			line = line + labelValue
+		}
+
+		rb.WriteString(line + "\n")
+	}
+
+	searcherBox := searcherModelStyle.Render(sb.String())
+	resultBox := resultModelStyle.Render(rb.String())
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, searcherBox, resultBox)
 }
 
 /* Helpers */
@@ -166,4 +230,42 @@ func uniqueStrings(input []string) []string {
 	}
 
 	return unique
+}
+
+func contains(input []string, str string) bool {
+	for _, s := range input {
+		if s == str {
+			return true
+		}
+	}
+	return false
+}
+
+func sortedKeys(m map[string][]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func elide(s string, maxRunes int) string {
+	width := runewidth.StringWidth(s)
+	if width <= maxRunes {
+		return s
+	}
+
+	r := []rune(s)
+	truncated := ""
+	width = 0
+	for _, c := range r {
+		cWidth := runewidth.RuneWidth(c)
+		if width+cWidth > maxRunes {
+			break
+		}
+		truncated += string(c)
+		width += cWidth
+	}
+	return truncated + "..."
 }
