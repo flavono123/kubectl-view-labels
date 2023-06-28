@@ -11,7 +11,9 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/paginator"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/muesli/termenv"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -31,9 +33,11 @@ func main() {
 }
 
 type model struct {
-	Nodes     *v1.NodeList
-	LabelKeys []string
-	Paginator paginator.Model
+	Nodes             *v1.NodeList
+	LabelKeys         []string
+	FilteredLabelKeys []string
+	Paginator         paginator.Model
+	TextInput         textinput.Model
 }
 
 func initialModel() model {
@@ -61,6 +65,12 @@ func initialModel() model {
 	uniqueLabelKeys := uniqueStrings(labelKeys)
 	sort.Strings(uniqueLabelKeys)
 
+	// Finder prompt
+	ti := textinput.New()
+	ti.Placeholder = "Search labels"
+	ti.Focus()
+
+	// Paginator
 	p := paginator.New()
 	p.Type = paginator.Dots
 	p.PerPage = 10
@@ -69,9 +79,11 @@ func initialModel() model {
 	p.SetTotalPages(len(uniqueLabelKeys))
 
 	return model{
-		Nodes:     nodes,
-		LabelKeys: uniqueLabelKeys,
-		Paginator: p,
+		Nodes:             nodes,
+		LabelKeys:         uniqueLabelKeys,
+		FilteredLabelKeys: uniqueLabelKeys,
+		Paginator:         p,
+		TextInput:         ti,
 	}
 }
 
@@ -84,12 +96,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "q":
+		case "ctrl+c":
 			return m, tea.Quit
+		case "left", "right":
+			m.Paginator, cmd = m.Paginator.Update(msg)
+			return m, cmd
 		}
 	}
+	m.TextInput, cmd = m.TextInput.Update(msg)
+	m.FilteredLabelKeys = fuzzy.Find(m.TextInput.Value(), m.LabelKeys)
+	m.Paginator.SetTotalPages(len(m.FilteredLabelKeys))
 
-	m.Paginator, cmd = m.Paginator.Update(msg)
 	return m, cmd
 }
 
@@ -99,14 +116,16 @@ func (m model) View() string {
 	var b strings.Builder
 
 	b.WriteString("Label list\n\n")
-	start, end := m.Paginator.GetSliceBounds(len(m.LabelKeys))
-	for _, labelKey := range m.LabelKeys[start:end] {
+	b.WriteString(m.TextInput.View() + "\n\n")
+	start, end := m.Paginator.GetSliceBounds(len(m.FilteredLabelKeys))
+	for _, labelKey := range m.FilteredLabelKeys[start:end] {
 		color := hashToColorCode(hash(labelKey))
 		styledLabelKey := termenv.String(labelKey).Foreground(colorProfile.Color(color)).String()
 		b.WriteString(styledLabelKey + "\n")
 	}
-	b.WriteString("  " + m.Paginator.View())
-	b.WriteString("\n\n  h/l ←/→ page • q: quit\n")
+	b.WriteString("\n\n  " + m.Paginator.View())
+	b.WriteString("\n\n  ←/→ page • ctrl+c: quit\n")
+
 	return b.String()
 }
 
