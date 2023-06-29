@@ -245,7 +245,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 const (
 	searchModelWidth = 40
-	resultModelWidth = 120
+	resultModelWidth = 100
 	commonHeight     = 20
 )
 
@@ -286,7 +286,7 @@ func (m model) View() string {
 	for _, name := range sortedKeys(m.FilteredNodeInfos) {
 		line := fmt.Sprintf("%-"+strconv.Itoa(max+2)+"s", name)
 		for _, labelValue := range m.FilteredNodeInfos[name] {
-			if len(line) > 150 {
+			if len(line) > searchModelWidth+resultModelWidth-3 { // HACK: result model width doesn't make sense -_-
 				line += " ..."
 				break
 			}
