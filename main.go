@@ -31,16 +31,60 @@ func main() {
 	}
 }
 
+/* LabeKey */
+type LabelKey struct {
+	Name  string
+	Style lipgloss.Style
+}
+
+func NewLabelKey() *LabelKey {
+	return &LabelKey{}
+}
+
+func (k *LabelKey) WithName(name string) *LabelKey {
+	k.Name = name
+	color := hashToColorCode(hash(name))
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
+	k.Style = style
+
+	return k
+}
+
+func (k *LabelKey) Render() string {
+	return k.Style.Render(k.Name)
+}
+
+/* LabeKeys */
+func LabelKeyNames(keys []LabelKey) []string {
+	var names []string
+	for _, key := range keys {
+		names = append(names, key.Name)
+	}
+	return names
+}
+
+func FuzzyFindLabelKeys(input string, keys []LabelKey) []LabelKey {
+	var results []LabelKey
+	for _, key := range keys {
+		if fuzzy.Match(input, key.Name) {
+			results = append(results, key)
+		}
+	}
+	return results
+}
+
+/* Model */
 type model struct {
 	FilteredNodes     map[string][]string
-	FilteredLabelKeys []string
+	FilteredLabelKeys []LabelKey
 	Paginator         paginator.Model
 	TextInput         textinput.Model
 }
 
+/* Global */
 var (
 	Nodes     *v1.NodeList
-	LabelKeys []string
+	LabelKeys []LabelKey
 )
 
 func initialModel() model {
@@ -59,14 +103,17 @@ func initialModel() model {
 	panicIfError(err)
 
 	// List all label key of nodes
-	var labelKeys []string
+	var labelKeys []LabelKey
 	for _, node := range Nodes.Items {
-		for labelKey := range node.Labels {
-			labelKeys = append(labelKeys, labelKey)
+		for key := range node.Labels {
+			labelKey := NewLabelKey().WithName(key)
+			labelKeys = append(labelKeys, *labelKey)
 		}
 	}
-	uniqLabelKeys := uniqueStrings(labelKeys)
-	sort.Strings(uniqLabelKeys)
+	uniqLabelKeys := uniqueKeys(labelKeys)
+	sort.Slice(uniqLabelKeys, func(i, j int) bool {
+		return uniqLabelKeys[i].Name < uniqLabelKeys[j].Name
+	})
 	LabelKeys = uniqLabelKeys
 
 	// Finder prompt
@@ -113,15 +160,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	m.TextInput, cmd = m.TextInput.Update(msg)
-	m.FilteredLabelKeys = fuzzy.Find(m.TextInput.Value(), LabelKeys)
+	m.FilteredLabelKeys = FuzzyFindLabelKeys(m.TextInput.Value(), LabelKeys)
 	// Filter nodes by label key
 	filteredNodes := make(map[string][]string)
+	labeKeyNames := LabelKeyNames(m.FilteredLabelKeys)
 	for _, node := range Nodes.Items {
-		for labelKey := range node.Labels {
-			if contains(m.FilteredLabelKeys, labelKey) {
+		for key := range node.Labels {
+			if contains(labeKeyNames, key) {
 				for _, filteredLabelKey := range m.FilteredLabelKeys {
-					color := hashToColorCode(hash(filteredLabelKey))
-					styledLabelValue := lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(node.Labels[filteredLabelKey])
+					color := hashToColorCode(hash(filteredLabelKey.Name))
+					styledLabelValue := lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(node.Labels[filteredLabelKey.Name])
 					filteredNodes[node.Name] = append(filteredNodes[node.Name], styledLabelValue)
 				}
 				break
@@ -157,9 +205,7 @@ func (m model) View() string {
 	sb.WriteString(m.TextInput.View() + "\n\n")
 
 	for _, labelKey := range m.FilteredLabelKeys[start:end] {
-		color := hashToColorCode(hash(labelKey))
-		styledLabelKey := lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(labelKey)
-		sb.WriteString(styledLabelKey + "\n")
+		sb.WriteString(labelKey.Render() + "\n")
 	}
 	sb.WriteString("\n\n  " + m.Paginator.View())
 	sb.WriteString("\n\n  ←/→ page • ctrl+c: quit\n")
@@ -215,14 +261,14 @@ func hashToColorCode(hash uint32) string {
 	return fmt.Sprintf("#%06x", hash&0x00ffffff) // use the lower 24 bits of the hash
 }
 
-func uniqueStrings(input []string) []string {
+func uniqueKeys(input []LabelKey) []LabelKey {
 	seen := make(map[string]struct{})
-	unique := []string{}
+	unique := []LabelKey{}
 
-	for _, str := range input {
-		if _, ok := seen[str]; !ok {
-			unique = append(unique, str)
-			seen[str] = struct{}{}
+	for _, key := range input {
+		if _, ok := seen[key.Name]; !ok {
+			unique = append(unique, key)
+			seen[key.Name] = struct{}{}
 		}
 	}
 
