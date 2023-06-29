@@ -100,9 +100,12 @@ func (v *LabelValue) Render() string {
 	return v.Style.Render(v.Name)
 }
 
+/* NodeInfos */
+type NodeInfos map[string][]LabelValue
+
 /* Model */
 type model struct {
-	FilteredNodes     map[string][]LabelValue
+	FilteredNodes     NodeInfos
 	FilteredLabelKeys []LabelKey
 	Paginator         paginator.Model
 	TextInput         textinput.Model
@@ -157,7 +160,7 @@ func initialModel() model {
 	p.SetTotalPages(len(LabelKeys))
 
 	// Node names
-	nodeInfos := make(map[string][]LabelValue)
+	nodeInfos := make(NodeInfos)
 	for _, node := range Nodes.Items {
 		nodeInfos[node.Name] = []LabelValue{}
 	}
@@ -190,7 +193,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.FilteredLabelKeys = FuzzyFindLabelKeys(m.TextInput.Value(), LabelKeys)
 
 	// Filter nodes by label key
-	filteredNodes := make(map[string][]LabelValue)
+	filteredNodes := make(NodeInfos)
 	labeKeyNames := LabelKeyNames(m.FilteredLabelKeys)
 	for _, node := range Nodes.Items {
 		for key := range node.Labels {
@@ -311,7 +314,7 @@ func contains(input []string, str string) bool {
 	return false
 }
 
-func sortedKeys(m map[string][]LabelValue) []string {
+func sortedKeys(m NodeInfos) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
