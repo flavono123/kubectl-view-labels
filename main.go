@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/paginator"
@@ -119,6 +120,16 @@ func FilterNodeInfos(keys []LabelKey, infos NodeInfos) NodeInfos {
 	}
 
 	return FilteredNodeInfos
+}
+
+func MaxNodeNameLength(infos NodeInfos) int {
+	var max int
+	for name := range infos {
+		if len(name) > max {
+			max = len(name)
+		}
+	}
+	return max
 }
 
 /* Model */
@@ -249,8 +260,9 @@ func (m model) View() string {
 
 	rb.WriteString("Node list\n\n")
 
+	max := MaxNodeNameLength(m.FilteredNodeInfos)
 	for _, name := range sortedKeys(m.FilteredNodeInfos) {
-		line := name + ":"
+		line := fmt.Sprintf("%-"+strconv.Itoa(max+2)+"s", name)
 		for _, labelValue := range m.FilteredNodeInfos[name] {
 			if len(line) > 150 {
 				line += " ..."
