@@ -52,7 +52,8 @@ func (k *LabelKey) WithName(name string) *LabelKey {
 }
 
 func (k *LabelKey) Render() string {
-	return k.Style.Render(k.Name)
+	style := k.Style.Copy()
+	return style.Render(k.Name)
 }
 
 /* LabeKeys */
@@ -87,6 +88,7 @@ func NewLabelValue() *LabelValue {
 
 func (v *LabelValue) WithName(name string) *LabelValue {
 	v.Name = name
+
 	return v
 }
 
@@ -98,7 +100,13 @@ func (v *LabelValue) WithKey(key LabelKey) *LabelValue {
 }
 
 func (v *LabelValue) Render() string {
-	return v.Style.Render(v.Name)
+	style := v.Style.Copy()
+
+	if v.Name == "" {
+		return style.Italic(true).Render("<None>")
+	} else {
+		return style.Render(v.Name)
+	}
 }
 
 /* NodeInfos */
@@ -235,7 +243,7 @@ var (
 				BorderForeground(lipgloss.Color("69"))
 
 	resultModelStyle = lipgloss.NewStyle().
-				MaxWidth(120).
+				Width(120).
 				Height(20).
 				BorderStyle(lipgloss.NormalBorder()). // for Debugging
 				BorderForeground(lipgloss.Color("96"))
