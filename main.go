@@ -120,8 +120,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if contains(m.FilteredLabelKeys, labelKey) {
 				for _, filteredLabelKey := range m.FilteredLabelKeys {
 					color := hashToColorCode(hash(filteredLabelKey))
-					// styledLabelValue := termenv.String(node.Labels[filteredLabelKey]).Foreground(colorProfile.Color(color)).String()
-					// do same thing as above with lipgloss
 					styledLabelValue := lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(node.Labels[filteredLabelKey])
 					filteredNodes[node.Name] = append(filteredNodes[node.Name], styledLabelValue)
 				}
@@ -159,8 +157,6 @@ func (m model) View() string {
 
 	for _, labelKey := range m.FilteredLabelKeys[start:end] {
 		color := hashToColorCode(hash(labelKey))
-		// styledLabelKey := termenv.String(labelKey).Foreground(colorProfile.Color(color)).String()
-		// do same thing as above with lipgloss
 		styledLabelKey := lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(labelKey)
 		sb.WriteString(styledLabelKey + "\n")
 	}
