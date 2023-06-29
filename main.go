@@ -103,9 +103,27 @@ func (v *LabelValue) Render() string {
 /* NodeInfos */
 type NodeInfos map[string][]LabelValue
 
+func FilterNodeInfos(keys []LabelKey, infos NodeInfos) NodeInfos {
+	FilteredNodeInfos := make(NodeInfos)
+	labeKeyNames := LabelKeyNames(keys)
+	for _, node := range Nodes.Items {
+		for key := range node.Labels {
+			if contains(labeKeyNames, key) {
+				for _, key := range keys {
+					labelValue := NewLabelValue().WithName(node.Labels[key.Name]).WithKey(key)
+					FilteredNodeInfos[node.Name] = append(FilteredNodeInfos[node.Name], *labelValue)
+				}
+				break
+			}
+		}
+	}
+
+	return FilteredNodeInfos
+}
+
 /* Model */
 type model struct {
-	FilteredNodes     NodeInfos
+	FilteredNodeInfos NodeInfos
 	FilteredLabelKeys []LabelKey
 	Paginator         paginator.Model
 	TextInput         textinput.Model
@@ -166,7 +184,7 @@ func initialModel() model {
 	}
 
 	return model{
-		FilteredNodes:     nodeInfos,
+		FilteredNodeInfos: nodeInfos,
 		FilteredLabelKeys: LabelKeys,
 		Paginator:         p,
 		TextInput:         ti,
@@ -189,24 +207,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 	}
+
 	m.TextInput, cmd = m.TextInput.Update(msg)
 	m.FilteredLabelKeys = FuzzyFindLabelKeys(m.TextInput.Value(), LabelKeys)
-
-	// Filter nodes by label key
-	filteredNodes := make(NodeInfos)
-	labeKeyNames := LabelKeyNames(m.FilteredLabelKeys)
-	for _, node := range Nodes.Items {
-		for key := range node.Labels {
-			if contains(labeKeyNames, key) {
-				for _, filteredLabelKey := range m.FilteredLabelKeys {
-					labelValue := NewLabelValue().WithName(node.Labels[filteredLabelKey.Name]).WithKey(filteredLabelKey)
-					filteredNodes[node.Name] = append(filteredNodes[node.Name], *labelValue)
-				}
-				break
-			}
-		}
-	}
-	m.FilteredNodes = filteredNodes
+	m.FilteredNodeInfos = FilterNodeInfos(m.FilteredLabelKeys, m.FilteredNodeInfos)
 	m.Paginator.SetTotalPages(len(m.FilteredLabelKeys))
 
 	return m, cmd
@@ -245,9 +249,9 @@ func (m model) View() string {
 
 	rb.WriteString("Node list\n\n")
 
-	for _, name := range sortedKeys(m.FilteredNodes) {
+	for _, name := range sortedKeys(m.FilteredNodeInfos) {
 		line := name + ":"
-		for _, labelValue := range m.FilteredNodes[name] {
+		for _, labelValue := range m.FilteredNodeInfos[name] {
 			if len(line) > 150 {
 				line += " ..."
 				break
