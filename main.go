@@ -14,7 +14,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lithammer/fuzzysearch/fuzzy"
-	"github.com/mattn/go-runewidth"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -246,24 +245,4 @@ func sortedKeys(m map[string][]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
-}
-
-func elide(s string, maxRunes int) string {
-	width := runewidth.StringWidth(s)
-	if width <= maxRunes {
-		return s
-	}
-
-	r := []rune(s)
-	truncated := ""
-	width = 0
-	for _, c := range r {
-		cWidth := runewidth.RuneWidth(c)
-		if width+cWidth > maxRunes {
-			break
-		}
-		truncated += string(c)
-		width += cWidth
-	}
-	return truncated + "..."
 }
