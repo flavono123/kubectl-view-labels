@@ -73,9 +73,36 @@ func FuzzyFindLabelKeys(input string, keys []LabelKey) []LabelKey {
 	return results
 }
 
+/* LabelValue */
+type LabelValue struct {
+	Name  string
+	Key   LabelKey
+	Style lipgloss.Style
+}
+
+func NewLabelValue() *LabelValue {
+	return &LabelValue{}
+}
+
+func (v *LabelValue) WithName(name string) *LabelValue {
+	v.Name = name
+	return v
+}
+
+func (v *LabelValue) WithKey(key LabelKey) *LabelValue {
+	v.Key = key
+	v.Style = key.Style
+
+	return v
+}
+
+func (v *LabelValue) Render() string {
+	return v.Style.Render(v.Name)
+}
+
 /* Model */
 type model struct {
-	FilteredNodes     map[string][]string
+	FilteredNodes     map[string][]LabelValue
 	FilteredLabelKeys []LabelKey
 	Paginator         paginator.Model
 	TextInput         textinput.Model
@@ -130,9 +157,9 @@ func initialModel() model {
 	p.SetTotalPages(len(LabelKeys))
 
 	// Node names
-	nodeInfos := make(map[string][]string)
+	nodeInfos := make(map[string][]LabelValue)
 	for _, node := range Nodes.Items {
-		nodeInfos[node.Name] = []string{}
+		nodeInfos[node.Name] = []LabelValue{}
 	}
 
 	return model{
@@ -161,16 +188,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	m.TextInput, cmd = m.TextInput.Update(msg)
 	m.FilteredLabelKeys = FuzzyFindLabelKeys(m.TextInput.Value(), LabelKeys)
+
 	// Filter nodes by label key
-	filteredNodes := make(map[string][]string)
+	filteredNodes := make(map[string][]LabelValue)
 	labeKeyNames := LabelKeyNames(m.FilteredLabelKeys)
 	for _, node := range Nodes.Items {
 		for key := range node.Labels {
 			if contains(labeKeyNames, key) {
 				for _, filteredLabelKey := range m.FilteredLabelKeys {
-					color := hashToColorCode(hash(filteredLabelKey.Name))
-					styledLabelValue := lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(node.Labels[filteredLabelKey.Name])
-					filteredNodes[node.Name] = append(filteredNodes[node.Name], styledLabelValue)
+					labelValue := NewLabelValue().WithName(node.Labels[filteredLabelKey.Name]).WithKey(filteredLabelKey)
+					filteredNodes[node.Name] = append(filteredNodes[node.Name], *labelValue)
 				}
 				break
 			}
@@ -224,7 +251,7 @@ func (m model) View() string {
 			}
 
 			line += " "
-			line = line + labelValue
+			line = line + labelValue.Render()
 		}
 
 		rb.WriteString(line + "\n")
@@ -284,7 +311,7 @@ func contains(input []string, str string) bool {
 	return false
 }
 
-func sortedKeys(m map[string][]string) []string {
+func sortedKeys(m map[string][]LabelValue) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
