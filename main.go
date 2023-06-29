@@ -52,8 +52,16 @@ func (k *LabelKey) WithName(name string) *LabelKey {
 }
 
 func (k *LabelKey) Render() string {
+	value := ""
 	style := k.Style.Copy()
-	return style.Render(k.Name)
+
+	if len(k.Name) > 40 {
+		value = k.Name[:37] + "..."
+	} else {
+		value = k.Name
+	}
+
+	return style.Render(value)
 }
 
 /* LabeKeys */
@@ -237,7 +245,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 var (
 	searcherModelStyle = lipgloss.NewStyle().
-				Width(60).
+				Width(40).
 				Height(20).
 				BorderStyle(lipgloss.NormalBorder()). // for Debugging
 				BorderForeground(lipgloss.Color("69"))
