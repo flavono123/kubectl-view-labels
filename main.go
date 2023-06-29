@@ -34,13 +34,15 @@ func main() {
 
 type model struct {
 	FilteredNodes     map[string][]string
-	LabelKeys         []string
 	FilteredLabelKeys []string
 	Paginator         paginator.Model
 	TextInput         textinput.Model
 }
 
-var Nodes *v1.NodeList
+var (
+	Nodes     *v1.NodeList
+	LabelKeys []string
+)
 
 func initialModel() model {
 	// Path to kubeconfig file
@@ -64,8 +66,9 @@ func initialModel() model {
 			labelKeys = append(labelKeys, labelKey)
 		}
 	}
-	uniqueLabelKeys := uniqueStrings(labelKeys)
-	sort.Strings(uniqueLabelKeys)
+	uniqLabelKeys := uniqueStrings(labelKeys)
+	sort.Strings(uniqLabelKeys)
+	LabelKeys = uniqLabelKeys
 
 	// Finder prompt
 	ti := textinput.New()
@@ -78,7 +81,7 @@ func initialModel() model {
 	p.PerPage = 10
 	p.ActiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Render("•")
 	p.InactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render("•")
-	p.SetTotalPages(len(uniqueLabelKeys))
+	p.SetTotalPages(len(LabelKeys))
 
 	// Node names
 	nodeInfos := make(map[string][]string)
@@ -88,8 +91,7 @@ func initialModel() model {
 
 	return model{
 		FilteredNodes:     nodeInfos,
-		LabelKeys:         uniqueLabelKeys,
-		FilteredLabelKeys: uniqueLabelKeys,
+		FilteredLabelKeys: LabelKeys,
 		Paginator:         p,
 		TextInput:         ti,
 	}
@@ -112,7 +114,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	m.TextInput, cmd = m.TextInput.Update(msg)
-	m.FilteredLabelKeys = fuzzy.Find(m.TextInput.Value(), m.LabelKeys)
+	m.FilteredLabelKeys = fuzzy.Find(m.TextInput.Value(), LabelKeys)
 	// Filter nodes by label key
 	filteredNodes := make(map[string][]string)
 	for _, node := range Nodes.Items {
