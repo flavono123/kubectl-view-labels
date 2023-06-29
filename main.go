@@ -33,13 +33,14 @@ func main() {
 }
 
 type model struct {
-	Nodes             *v1.NodeList
 	FilteredNodes     map[string][]string
 	LabelKeys         []string
 	FilteredLabelKeys []string
 	Paginator         paginator.Model
 	TextInput         textinput.Model
 }
+
+var Nodes *v1.NodeList
 
 func initialModel() model {
 	// Path to kubeconfig file
@@ -53,12 +54,12 @@ func initialModel() model {
 	clientset, err := kubernetes.NewForConfig(config)
 	panicIfError(err)
 
-	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	Nodes, err = clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	panicIfError(err)
 
 	// List all label key of nodes
 	var labelKeys []string
-	for _, node := range nodes.Items {
+	for _, node := range Nodes.Items {
 		for labelKey := range node.Labels {
 			labelKeys = append(labelKeys, labelKey)
 		}
@@ -81,12 +82,11 @@ func initialModel() model {
 
 	// Node names
 	nodeInfos := make(map[string][]string)
-	for _, node := range nodes.Items {
+	for _, node := range Nodes.Items {
 		nodeInfos[node.Name] = []string{}
 	}
 
 	return model{
-		Nodes:             nodes,
 		FilteredNodes:     nodeInfos,
 		LabelKeys:         uniqueLabelKeys,
 		FilteredLabelKeys: uniqueLabelKeys,
@@ -115,7 +115,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.FilteredLabelKeys = fuzzy.Find(m.TextInput.Value(), m.LabelKeys)
 	// Filter nodes by label key
 	filteredNodes := make(map[string][]string)
-	for _, node := range m.Nodes.Items {
+	for _, node := range Nodes.Items {
 		for labelKey := range node.Labels {
 			if contains(m.FilteredLabelKeys, labelKey) {
 				for _, filteredLabelKey := range m.FilteredLabelKeys {
