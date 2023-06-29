@@ -55,8 +55,8 @@ func (k *LabelKey) Render() string {
 	value := ""
 	style := k.Style.Copy()
 
-	if len(k.Name) > 40 {
-		value = k.Name[:37] + "..."
+	if len(k.Name) > searchModelWidth {
+		value = k.Name[:searchModelWidth-3] + "..."
 	} else {
 		value = k.Name
 	}
@@ -243,16 +243,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+const (
+	searchModelWidth = 40
+	resultModelWidth = 120
+	commonHeight     = 20
+)
+
 var (
 	searcherModelStyle = lipgloss.NewStyle().
-				Width(40).
-				Height(20).
+				Width(searchModelWidth).
+				Height(commonHeight).
 				BorderStyle(lipgloss.NormalBorder()). // for Debugging
 				BorderForeground(lipgloss.Color("69"))
 
 	resultModelStyle = lipgloss.NewStyle().
-				Width(120).
-				Height(20).
+				Width(resultModelWidth).
+				Height(commonHeight).
 				BorderStyle(lipgloss.NormalBorder()). // for Debugging
 				BorderForeground(lipgloss.Color("96"))
 )
