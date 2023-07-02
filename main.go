@@ -263,6 +263,7 @@ var (
 				BorderStyle(lipgloss.NormalBorder()). // for Debugging
 				BorderForeground(lipgloss.Color("96"))
 
+	helpStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).Render
 	activeDot   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Render("•")
 	inactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render("•")
 )
@@ -279,7 +280,7 @@ func (m model) View() string {
 		sb.WriteString(labelKey.Render() + "\n")
 	}
 	sb.WriteString("\n\n  " + m.Paginator.View())
-	sb.WriteString("\n\n  ←/→ page • ctrl+c: quit\n")
+	fmt.Fprintln(&sb, helpStyle("\n\n  ←/→ page • ctrl+c: quit"))
 
 	// Result view
 	var rb strings.Builder
