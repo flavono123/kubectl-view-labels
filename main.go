@@ -200,8 +200,8 @@ func initialModel() model {
 	p := paginator.New()
 	p.Type = paginator.Dots
 	p.PerPage = 10
-	p.ActiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Render("•")
-	p.InactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render("•")
+	p.ActiveDot = activeDot
+	p.InactiveDot = inactiveDot
 	p.SetTotalPages(len(LabelKeys))
 
 	// Node names
@@ -244,6 +244,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 const (
+	// Layout
 	searchModelWidth = 40
 	resultModelWidth = 100
 	commonHeight     = 20
@@ -261,6 +262,9 @@ var (
 				Height(commonHeight).
 				BorderStyle(lipgloss.NormalBorder()). // for Debugging
 				BorderForeground(lipgloss.Color("96"))
+
+	activeDot   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Render("•")
+	inactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render("•")
 )
 
 func (m model) View() string {
