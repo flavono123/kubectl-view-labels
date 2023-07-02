@@ -288,7 +288,11 @@ func (m model) View() string {
 	rb.WriteString("Node list\n\n")
 
 	max := MaxNodeNameLength(m.FilteredNodeInfos)
-	for _, name := range sortedKeys(m.FilteredNodeInfos) {
+	for numOfNodes, name := range sortedKeys(m.FilteredNodeInfos) {
+		if numOfNodes >= commonHeight-4 {
+			rb.WriteString("..." + "\n")
+			break
+		}
 		line := fmt.Sprintf("%-"+strconv.Itoa(max+2)+"s", name)
 		for _, labelValue := range m.FilteredNodeInfos[name] {
 			if len(line) > searchModelWidth+resultModelWidth-3 { // HACK: result model width doesn't make sense -_-
