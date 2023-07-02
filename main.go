@@ -246,7 +246,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 const (
 	// Layout
 	searchModelWidth = 40
-	resultModelWidth = 100
+	resultModelWidth = 120
 	commonHeight     = 20
 )
 
