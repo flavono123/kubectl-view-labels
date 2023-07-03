@@ -52,7 +52,16 @@ func (k *LabelKey) WithName(name string) *LabelKey {
 }
 
 func (k *LabelKey) Render() string {
-	return k.Style.Render(k.Name)
+	value := ""
+	style := k.Style.Copy()
+
+	if len(k.Name) > searchModelWidth {
+		value = k.Name[:searchModelWidth-3] + "..."
+	} else {
+		value = k.Name
+	}
+
+	return style.Render(value)
 }
 
 /* LabeKeys */
@@ -87,6 +96,7 @@ func NewLabelValue() *LabelValue {
 
 func (v *LabelValue) WithName(name string) *LabelValue {
 	v.Name = name
+
 	return v
 }
 
@@ -98,7 +108,13 @@ func (v *LabelValue) WithKey(key LabelKey) *LabelValue {
 }
 
 func (v *LabelValue) Render() string {
-	return v.Style.Render(v.Name)
+	style := v.Style.Copy()
+
+	if v.Name == "" {
+		return style.Italic(true).Render("<None>")
+	} else {
+		return style.Render(v.Name)
+	}
 }
 
 /* NodeInfos */
@@ -184,8 +200,8 @@ func initialModel() model {
 	p := paginator.New()
 	p.Type = paginator.Dots
 	p.PerPage = 10
-	p.ActiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Render("•")
-	p.InactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render("•")
+	p.ActiveDot = activeDot
+	p.InactiveDot = inactiveDot
 	p.SetTotalPages(len(LabelKeys))
 
 	// Node names
@@ -227,18 +243,29 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+const (
+	// Layout
+	searchModelWidth = 40
+	resultModelWidth = 120
+	commonHeight     = 20
+)
+
 var (
 	searcherModelStyle = lipgloss.NewStyle().
-				Width(60).
-				Height(20).
+				Width(searchModelWidth).
+				Height(commonHeight).
 				BorderStyle(lipgloss.NormalBorder()). // for Debugging
 				BorderForeground(lipgloss.Color("69"))
 
 	resultModelStyle = lipgloss.NewStyle().
-				MaxWidth(120).
-				Height(20).
+				Width(resultModelWidth).
+				Height(commonHeight).
 				BorderStyle(lipgloss.NormalBorder()). // for Debugging
 				BorderForeground(lipgloss.Color("96"))
+
+	helpStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).Render
+	activeDot   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Render("•")
+	inactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render("•")
 )
 
 func (m model) View() string {
@@ -253,7 +280,7 @@ func (m model) View() string {
 		sb.WriteString(labelKey.Render() + "\n")
 	}
 	sb.WriteString("\n\n  " + m.Paginator.View())
-	sb.WriteString("\n\n  ←/→ page • ctrl+c: quit\n")
+	fmt.Fprintln(&sb, helpStyle("\n\n  ←/→ page • ctrl+c: quit"))
 
 	// Result view
 	var rb strings.Builder
@@ -261,10 +288,14 @@ func (m model) View() string {
 	rb.WriteString("Node list\n\n")
 
 	max := MaxNodeNameLength(m.FilteredNodeInfos)
-	for _, name := range sortedKeys(m.FilteredNodeInfos) {
+	for numOfNodes, name := range sortedKeys(m.FilteredNodeInfos) {
+		if numOfNodes >= commonHeight-4 {
+			rb.WriteString("..." + "\n")
+			break
+		}
 		line := fmt.Sprintf("%-"+strconv.Itoa(max+2)+"s", name)
 		for _, labelValue := range m.FilteredNodeInfos[name] {
-			if len(line) > 150 {
+			if len(line) > searchModelWidth+resultModelWidth-3 { // HACK: result model width doesn't make sense -_-
 				line += " ..."
 				break
 			}
