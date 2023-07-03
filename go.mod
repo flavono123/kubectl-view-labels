@@ -1,4 +1,4 @@
-module kubectl-label_stat
+module kubectl-view-labels
 
 go 1.20
 
