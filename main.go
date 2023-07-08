@@ -261,14 +261,11 @@ var (
 	searcherModelStyle = lipgloss.NewStyle().
 				Width(searchModelWidth).
 				Height(commonHeight).
-				BorderStyle(lipgloss.NormalBorder()). // for Debugging
-				BorderForeground(lipgloss.Color("69"))
+				MarginRight(2)
 
 	resultModelStyle = lipgloss.NewStyle().
 				Width(resultModelWidth).
-				Height(commonHeight).
-				BorderStyle(lipgloss.NormalBorder()). // for Debugging
-				BorderForeground(lipgloss.Color("96"))
+				Height(commonHeight)
 
 	helpStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).Render
 	activeDot   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Render("•")
