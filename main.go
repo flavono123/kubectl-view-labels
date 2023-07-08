@@ -194,6 +194,7 @@ func initialModel() model {
 	// Finder prompt
 	ti := textinput.New()
 	ti.Placeholder = "Search labels"
+	ti.PromptStyle = searchPromptStyle
 	ti.Focus()
 
 	// Paginator
@@ -248,9 +249,15 @@ const (
 	searchModelWidth = 40
 	resultModelWidth = 120
 	commonHeight     = 20
+
+	// Colors
+	searchPromptColor = "#D4BFFF"
 )
 
 var (
+	searchPromptStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color(searchPromptColor))
+
 	searcherModelStyle = lipgloss.NewStyle().
 				Width(searchModelWidth).
 				Height(commonHeight).
