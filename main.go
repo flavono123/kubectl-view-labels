@@ -277,7 +277,7 @@ func (m model) View() string {
 
 	// Searcher view
 	var sb strings.Builder
-	sb.WriteString("Label list\n\n")
+	sb.WriteString("LABELS\n\n")
 	sb.WriteString(m.TextInput.View() + "\n\n")
 
 	for _, labelKey := range m.FilteredLabelKeys[start:end] {
@@ -289,7 +289,7 @@ func (m model) View() string {
 	// Result view
 	var rb strings.Builder
 
-	rb.WriteString("Node list\n\n")
+	rb.WriteString("NODES\n\n")
 
 	max := MaxNodeNameLength(m.FilteredNodeInfos)
 	for numOfNodes, name := range sortedKeys(m.FilteredNodeInfos) {
