@@ -27,12 +27,12 @@ import (
 func main() {
 	if len(os.Args) < 2 {
 		printHelpMessage()
-		return
+		os.Exit(1)
 	}
 
 	if os.Args[1] != "node" && os.Args[1] != "no" && os.Args[1] != "nodes" {
 		printHelpMessage()
-		return
+		os.Exit(1)
 	}
 
 	p := tea.NewProgram(initialModel())
