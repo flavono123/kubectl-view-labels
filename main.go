@@ -25,6 +25,16 @@ import (
 )
 
 func main() {
+	if len(os.Args) < 2 {
+		fmt.Println("MOCK HELP MESSAGE")
+		return
+	}
+
+	if os.Args[1] != "node" && os.Args[1] != "no" && os.Args[1] != "nodes" {
+		fmt.Println("MOCK HELP MESSAGE")
+		return
+	}
+
 	p := tea.NewProgram(initialModel())
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
