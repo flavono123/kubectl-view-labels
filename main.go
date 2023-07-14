@@ -25,6 +25,20 @@ import (
 )
 
 func main() {
+	helpFlag := flag.Bool("help", false, "Print help message")
+	flag.BoolVar(helpFlag, "h", false, "Print help message")
+
+	flag.Usage = func() {
+		printHelpMessage()
+	}
+
+	flag.Parse()
+
+	if *helpFlag {
+		printHelpMessage()
+		os.Exit(0)
+	}
+
 	if len(os.Args) < 2 {
 		printHelpMessage()
 		os.Exit(1)
@@ -342,7 +356,11 @@ Usage:
 	view-labels <resource>
 
 Available Resources:
-	node(no, nodes): Nodes`)
+	node(no, nodes): Nodes
+
+Options:
+	-h, --help:
+		Print help message`)
 }
 
 func homeDir() string {
