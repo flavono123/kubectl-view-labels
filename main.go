@@ -26,12 +26,12 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("MOCK HELP MESSAGE")
+		printHelpMessage()
 		return
 	}
 
 	if os.Args[1] != "node" && os.Args[1] != "no" && os.Args[1] != "nodes" {
-		fmt.Println("MOCK HELP MESSAGE")
+		printHelpMessage()
 		return
 	}
 
@@ -333,6 +333,16 @@ func panicIfError(err error) {
 	if err != nil {
 		panic(err.Error())
 	}
+}
+
+func printHelpMessage() {
+	fmt.Println(`Fuzzy search with label keys for a resource.
+
+Usage:
+	view-labels <resource>
+
+Available Resources:
+	node(no, nodes): Nodes`)
 }
 
 func homeDir() string {
