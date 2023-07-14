@@ -1,3 +1,6 @@
 # Asciinema cast and gif for temp
 *.cast
 *.gif
+
+# Binaries
+build/
