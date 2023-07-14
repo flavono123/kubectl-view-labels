@@ -194,6 +194,7 @@ func initialModel() model {
 	// Finder prompt
 	ti := textinput.New()
 	ti.Placeholder = "Search labels"
+	ti.PromptStyle = searchPromptStyle
 	ti.Focus()
 
 	// Paginator
@@ -248,20 +249,23 @@ const (
 	searchModelWidth = 40
 	resultModelWidth = 120
 	commonHeight     = 20
+
+	// Colors
+	searchPromptColor = "#D4BFFF"
 )
 
 var (
+	searchPromptStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color(searchPromptColor))
+
 	searcherModelStyle = lipgloss.NewStyle().
 				Width(searchModelWidth).
 				Height(commonHeight).
-				BorderStyle(lipgloss.NormalBorder()). // for Debugging
-				BorderForeground(lipgloss.Color("69"))
+				MarginRight(2)
 
 	resultModelStyle = lipgloss.NewStyle().
 				Width(resultModelWidth).
-				Height(commonHeight).
-				BorderStyle(lipgloss.NormalBorder()). // for Debugging
-				BorderForeground(lipgloss.Color("96"))
+				Height(commonHeight)
 
 	helpStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).Render
 	activeDot   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Render("•")
@@ -273,7 +277,7 @@ func (m model) View() string {
 
 	// Searcher view
 	var sb strings.Builder
-	sb.WriteString("Label list\n\n")
+	sb.WriteString("LABELS\n\n")
 	sb.WriteString(m.TextInput.View() + "\n\n")
 
 	for _, labelKey := range m.FilteredLabelKeys[start:end] {
@@ -285,7 +289,7 @@ func (m model) View() string {
 	// Result view
 	var rb strings.Builder
 
-	rb.WriteString("Node list\n\n")
+	rb.WriteString("NODES\n\n")
 
 	max := MaxNodeNameLength(m.FilteredNodeInfos)
 	for numOfNodes, name := range sortedKeys(m.FilteredNodeInfos) {
