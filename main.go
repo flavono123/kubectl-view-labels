@@ -147,21 +147,21 @@ func (v *LabelValue) Render() string {
 type NodeInfos map[string][]LabelValue
 
 func FilterNodeInfos(keys []LabelKey, infos NodeInfos) NodeInfos {
-	FilteredNodeInfos := make(NodeInfos)
+	filteredNodeInfos := make(NodeInfos)
 	labeKeyNames := LabelKeyNames(keys)
 	for _, node := range Nodes.Items {
 		for key := range node.Labels {
 			if contains(labeKeyNames, key) {
 				for _, key := range keys {
 					labelValue := NewLabelValue().WithName(node.Labels[key.Name]).WithKey(key)
-					FilteredNodeInfos[node.Name] = append(FilteredNodeInfos[node.Name], *labelValue)
+					filteredNodeInfos[node.Name] = append(filteredNodeInfos[node.Name], *labelValue)
 				}
 				break
 			}
 		}
 	}
 
-	return FilteredNodeInfos
+	return filteredNodeInfos
 }
 
 func MaxNodeNameLength(infos NodeInfos) int {
