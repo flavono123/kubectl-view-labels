@@ -41,7 +41,7 @@ func (m *model) filterNodeInfos(keys []LabelKey) {
 			if contains(labeKeyNames, key) {
 				for _, key := range keys {
 					labelValue := NewLabelValue().WithName(node.Labels[key.Name]).WithKey(key)
-					(*filteredNodeInfos)[node.Name] = append((*filteredNodeInfos)[node.Name], *labelValue)
+					filteredNodeInfos.appendLabelValueTo(node.Name, labelValue)
 				}
 				break
 			}

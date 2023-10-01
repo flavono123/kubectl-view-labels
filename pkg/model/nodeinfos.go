@@ -40,3 +40,6 @@ func (n *nodeInfos) maxNodeNameLength() int {
 	return max
 }
 
+func (n *nodeInfos) appendLabelValueTo(nodeName string, labelValue *LabelValue) {
+	(*n)[nodeName] = append((*n)[nodeName], *labelValue)
+}
