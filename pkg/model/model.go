@@ -28,18 +28,18 @@ type NodeInfos map[string][]LabelValue
 
 /* Model */
 type model struct {
-	Nodes             *v1.NodeList
+	nodes             *v1.NodeList
 	filteredNodeInfos NodeInfos
-	TotalLabelKeys    []LabelKey
-	FilteredLabelKeys []LabelKey
+	totalLabelKeys    []LabelKey
+	filteredLabelKeys []LabelKey
 	paginator         paginator.Model
-	TextInput         textinput.Model
+	textInput         textinput.Model
 }
 
 func (m *model) filterNodeInfos(keys []LabelKey) {
 	filteredNodeInfos := make(NodeInfos)
 	labeKeyNames := LabelKeyNames(keys)
-	for _, node := range m.Nodes.Items {
+	for _, node := range m.nodes.Items {
 		for key := range node.Labels {
 			if contains(labeKeyNames, key) {
 				for _, key := range keys {
@@ -78,7 +78,7 @@ func InitialModel() *model {
 
 	m := model{}
 
-	m.Nodes = watchNodes(clientset, &m)
+	m.nodes = watchNodes(clientset, &m)
 	m.updateTotalLabelKeys()
 
 	// Finder prompt
@@ -93,18 +93,18 @@ func InitialModel() *model {
 	p.PerPage = 10
 	p.ActiveDot = activeDot
 	p.InactiveDot = inactiveDot
-	p.SetTotalPages(len(m.TotalLabelKeys))
+	p.SetTotalPages(len(m.totalLabelKeys))
 
 	// Node names
 	nodeInfos := make(NodeInfos)
-	for _, node := range m.Nodes.Items {
+	for _, node := range m.nodes.Items {
 		nodeInfos[node.Name] = []LabelValue{}
 	}
 
 	m.filteredNodeInfos = nodeInfos
-	m.FilteredLabelKeys = m.TotalLabelKeys
+	m.filteredLabelKeys = m.totalLabelKeys
 	m.paginator = p
-	m.TextInput = ti
+	m.textInput = ti
 
 	return &m
 }
@@ -126,10 +126,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	m.TextInput, cmd = m.TextInput.Update(msg)
-	m.FilteredLabelKeys = FuzzyFindLabelKeys(m.TextInput.Value(), m.TotalLabelKeys)
-	m.filterNodeInfos(m.FilteredLabelKeys)
-	m.paginator.SetTotalPages(len(m.FilteredLabelKeys))
+	m.textInput, cmd = m.textInput.Update(msg)
+	m.filteredLabelKeys = FuzzyFindLabelKeys(m.textInput.Value(), m.totalLabelKeys)
+	m.filterNodeInfos(m.filteredLabelKeys)
+	m.paginator.SetTotalPages(len(m.filteredLabelKeys))
 
 	return m, cmd
 }
@@ -163,14 +163,14 @@ var (
 )
 
 func (m model) View() string {
-	start, end := m.paginator.GetSliceBounds(len(m.FilteredLabelKeys))
+	start, end := m.paginator.GetSliceBounds(len(m.filteredLabelKeys))
 
 	// Searcher view
 	var sb strings.Builder
 	sb.WriteString("LABELS\n\n")
-	sb.WriteString(m.TextInput.View() + "\n\n")
+	sb.WriteString(m.textInput.View() + "\n\n")
 
-	for _, labelKey := range m.FilteredLabelKeys[start:end] {
+	for _, labelKey := range m.filteredLabelKeys[start:end] {
 		sb.WriteString(labelKey.Render() + "\n")
 	}
 	sb.WriteString("\n\n  " + m.paginator.View())
@@ -266,14 +266,14 @@ func watchNodes(clientset *kubernetes.Clientset, m *model) *v1.NodeList {
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				node := obj.(*v1.Node)
-				m.Nodes.Items = append(m.Nodes.Items, *node)
+				m.nodes.Items = append(m.nodes.Items, *node)
 				m.updateTotalLabelKeys()
 			},
 			DeleteFunc: func(obj interface{}) {
 				node := obj.(*v1.Node)
-				for i, n := range m.Nodes.Items {
+				for i, n := range m.nodes.Items {
 					if n.Name == node.Name {
-						m.Nodes.Items = append(m.Nodes.Items[:i], m.Nodes.Items[i+1:]...)
+						m.nodes.Items = append(m.nodes.Items[:i], m.nodes.Items[i+1:]...)
 						break
 					}
 				}
@@ -281,9 +281,9 @@ func watchNodes(clientset *kubernetes.Clientset, m *model) *v1.NodeList {
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				node := newObj.(*v1.Node)
-				for i, n := range m.Nodes.Items {
+				for i, n := range m.nodes.Items {
 					if n.Name == node.Name {
-						m.Nodes.Items[i] = *node
+						m.nodes.Items[i] = *node
 						break
 					}
 				}
@@ -301,7 +301,7 @@ func watchNodes(clientset *kubernetes.Clientset, m *model) *v1.NodeList {
 
 func (m *model) updateTotalLabelKeys() {
 	var labelKeys []LabelKey
-	for _, node := range m.Nodes.Items {
+	for _, node := range m.nodes.Items {
 		for key := range node.Labels {
 			labelKey := NewLabelKey().WithName(key)
 			labelKeys = append(labelKeys, *labelKey)
@@ -315,7 +315,7 @@ func (m *model) updateTotalLabelKeys() {
 		return labelKeys[i].Name < labelKeys[j].Name
 	})
 
-	m.TotalLabelKeys = labelKeys
+	m.totalLabelKeys = labelKeys
 }
 
 func panicIfError(err error) {
