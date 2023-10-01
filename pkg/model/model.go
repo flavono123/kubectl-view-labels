@@ -23,13 +23,10 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-/* NodeInfos */
-type NodeInfos map[string][]LabelValue
-
 /* Model */
 type model struct {
 	nodes             *v1.NodeList
-	filteredNodeInfos NodeInfos
+	filteredNodeInfos *nodeInfos
 	totalLabelKeys    []LabelKey
 	filteredLabelKeys []LabelKey
 	paginator         paginator.Model
@@ -37,14 +34,14 @@ type model struct {
 }
 
 func (m *model) filterNodeInfos(keys []LabelKey) {
-	filteredNodeInfos := make(NodeInfos)
+	filteredNodeInfos := NewNodeInfos()
 	labeKeyNames := LabelKeyNames(keys)
 	for _, node := range m.nodes.Items {
 		for key := range node.Labels {
 			if contains(labeKeyNames, key) {
 				for _, key := range keys {
 					labelValue := NewLabelValue().WithName(node.Labels[key.Name]).WithKey(key)
-					filteredNodeInfos[node.Name] = append(filteredNodeInfos[node.Name], *labelValue)
+					(*filteredNodeInfos)[node.Name] = append((*filteredNodeInfos)[node.Name], *labelValue)
 				}
 				break
 			}
@@ -52,16 +49,6 @@ func (m *model) filterNodeInfos(keys []LabelKey) {
 	}
 
 	m.filteredNodeInfos = filteredNodeInfos
-}
-
-func MaxNodeNameLength(infos NodeInfos) int {
-	var max int
-	for name := range infos {
-		if len(name) > max {
-			max = len(name)
-		}
-	}
-	return max
 }
 
 func InitialModel() *model {
@@ -96,10 +83,7 @@ func InitialModel() *model {
 	p.SetTotalPages(len(m.totalLabelKeys))
 
 	// Node names
-	nodeInfos := make(NodeInfos)
-	for _, node := range m.nodes.Items {
-		nodeInfos[node.Name] = []LabelValue{}
-	}
+	nodeInfos := NewNodeInfos().WithNodes(m.nodes)
 
 	m.filteredNodeInfos = nodeInfos
 	m.filteredLabelKeys = m.totalLabelKeys
@@ -181,14 +165,14 @@ func (m model) View() string {
 
 	rb.WriteString("NODES\n\n")
 
-	max := MaxNodeNameLength(m.filteredNodeInfos)
-	for numOfNodes, name := range sortedKeys(m.filteredNodeInfos) {
+	max := m.filteredNodeInfos.maxNodeNameLength()
+	for numOfNodes, name := range m.filteredNodeInfos.sortedKeys() {
 		if numOfNodes >= commonHeight-4 {
 			rb.WriteString("..." + "\n")
 			break
 		}
 		line := fmt.Sprintf("%-"+strconv.Itoa(max+2)+"s", name)
-		for _, labelValue := range m.filteredNodeInfos[name] {
+		for _, labelValue := range (*m.filteredNodeInfos)[name] {
 			if len(line) > searchModelWidth+resultModelWidth-3 { // HACK: result model width doesn't make sense -_-
 				line += " ..."
 				break
@@ -238,15 +222,6 @@ func contains(input []string, str string) bool {
 		}
 	}
 	return false
-}
-
-func sortedKeys(m NodeInfos) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
 }
 
 func watchNodes(clientset *kubernetes.Clientset, m *model) *v1.NodeList {
