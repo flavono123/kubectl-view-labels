@@ -26,7 +26,17 @@ import (
 /* NodeInfos */
 type NodeInfos map[string][]LabelValue
 
-func (m *model) FilterNodeInfos(keys []LabelKey, infos NodeInfos) NodeInfos {
+/* Model */
+type model struct {
+	Nodes             *v1.NodeList
+	filteredNodeInfos NodeInfos
+	TotalLabelKeys    []LabelKey
+	FilteredLabelKeys []LabelKey
+	Paginator         paginator.Model
+	TextInput         textinput.Model
+}
+
+func (m *model) filterNodeInfos(keys []LabelKey) {
 	filteredNodeInfos := make(NodeInfos)
 	labeKeyNames := LabelKeyNames(keys)
 	for _, node := range m.Nodes.Items {
@@ -41,7 +51,7 @@ func (m *model) FilterNodeInfos(keys []LabelKey, infos NodeInfos) NodeInfos {
 		}
 	}
 
-	return filteredNodeInfos
+	m.filteredNodeInfos = filteredNodeInfos
 }
 
 func MaxNodeNameLength(infos NodeInfos) int {
@@ -52,16 +62,6 @@ func MaxNodeNameLength(infos NodeInfos) int {
 		}
 	}
 	return max
-}
-
-/* Model */
-type model struct {
-	Nodes             *v1.NodeList
-	FilteredNodeInfos NodeInfos
-	TotalLabelKeys    []LabelKey
-	FilteredLabelKeys []LabelKey
-	Paginator         paginator.Model
-	TextInput         textinput.Model
 }
 
 func InitialModel() *model {
@@ -101,7 +101,7 @@ func InitialModel() *model {
 		nodeInfos[node.Name] = []LabelValue{}
 	}
 
-	m.FilteredNodeInfos = nodeInfos
+	m.filteredNodeInfos = nodeInfos
 	m.FilteredLabelKeys = m.TotalLabelKeys
 	m.Paginator = p
 	m.TextInput = ti
@@ -128,7 +128,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	m.TextInput, cmd = m.TextInput.Update(msg)
 	m.FilteredLabelKeys = FuzzyFindLabelKeys(m.TextInput.Value(), m.TotalLabelKeys)
-	m.FilteredNodeInfos = m.FilterNodeInfos(m.FilteredLabelKeys, m.FilteredNodeInfos)
+	m.filterNodeInfos(m.FilteredLabelKeys)
 	m.Paginator.SetTotalPages(len(m.FilteredLabelKeys))
 
 	return m, cmd
@@ -181,14 +181,14 @@ func (m model) View() string {
 
 	rb.WriteString("NODES\n\n")
 
-	max := MaxNodeNameLength(m.FilteredNodeInfos)
-	for numOfNodes, name := range sortedKeys(m.FilteredNodeInfos) {
+	max := MaxNodeNameLength(m.filteredNodeInfos)
+	for numOfNodes, name := range sortedKeys(m.filteredNodeInfos) {
 		if numOfNodes >= commonHeight-4 {
 			rb.WriteString("..." + "\n")
 			break
 		}
 		line := fmt.Sprintf("%-"+strconv.Itoa(max+2)+"s", name)
-		for _, labelValue := range m.FilteredNodeInfos[name] {
+		for _, labelValue := range m.filteredNodeInfos[name] {
 			if len(line) > searchModelWidth+resultModelWidth-3 { // HACK: result model width doesn't make sense -_-
 				line += " ..."
 				break
