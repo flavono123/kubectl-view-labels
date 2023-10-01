@@ -5,7 +5,6 @@ import (
 	"github.com/lithammer/fuzzysearch/fuzzy"
 )
 
-/* LabeKey */
 type LabelKey struct {
 	Name  string
 	Style lipgloss.Style
@@ -38,7 +37,6 @@ func (k *LabelKey) Render() string {
 	return style.Render(value)
 }
 
-/* LabeKeys */
 func LabelKeyNames(keys []LabelKey) []string {
 	var names []string
 	for _, key := range keys {
