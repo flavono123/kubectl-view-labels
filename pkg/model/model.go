@@ -32,7 +32,7 @@ type model struct {
 	filteredNodeInfos NodeInfos
 	TotalLabelKeys    []LabelKey
 	FilteredLabelKeys []LabelKey
-	Paginator         paginator.Model
+	paginator         paginator.Model
 	TextInput         textinput.Model
 }
 
@@ -87,7 +87,7 @@ func InitialModel() *model {
 	ti.PromptStyle = searchPromptStyle
 	ti.Focus()
 
-	// Paginator
+	// paginator
 	p := paginator.New()
 	p.Type = paginator.Dots
 	p.PerPage = 10
@@ -103,7 +103,7 @@ func InitialModel() *model {
 
 	m.filteredNodeInfos = nodeInfos
 	m.FilteredLabelKeys = m.TotalLabelKeys
-	m.Paginator = p
+	m.paginator = p
 	m.TextInput = ti
 
 	return &m
@@ -121,7 +121,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "left", "right":
-			m.Paginator, cmd = m.Paginator.Update(msg)
+			m.paginator, cmd = m.paginator.Update(msg)
 			return m, cmd
 		}
 	}
@@ -129,7 +129,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.TextInput, cmd = m.TextInput.Update(msg)
 	m.FilteredLabelKeys = FuzzyFindLabelKeys(m.TextInput.Value(), m.TotalLabelKeys)
 	m.filterNodeInfos(m.FilteredLabelKeys)
-	m.Paginator.SetTotalPages(len(m.FilteredLabelKeys))
+	m.paginator.SetTotalPages(len(m.FilteredLabelKeys))
 
 	return m, cmd
 }
@@ -163,7 +163,7 @@ var (
 )
 
 func (m model) View() string {
-	start, end := m.Paginator.GetSliceBounds(len(m.FilteredLabelKeys))
+	start, end := m.paginator.GetSliceBounds(len(m.FilteredLabelKeys))
 
 	// Searcher view
 	var sb strings.Builder
@@ -173,7 +173,7 @@ func (m model) View() string {
 	for _, labelKey := range m.FilteredLabelKeys[start:end] {
 		sb.WriteString(labelKey.Render() + "\n")
 	}
-	sb.WriteString("\n\n  " + m.Paginator.View())
+	sb.WriteString("\n\n  " + m.paginator.View())
 	fmt.Fprintln(&sb, helpStyle("\n\n  ←/→ page • ctrl+c: quit"))
 
 	// Result view
