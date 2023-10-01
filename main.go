@@ -201,9 +201,9 @@ func initialModel() *model {
 	panicIfError(err)
 
 	m := model{}
-	// m.updateLabelKeys()
 
 	Nodes = watchNodes(clientset, &m)
+	m.updateTotalLabelKeys()
 
 	// Finder prompt
 	ti := textinput.New()
@@ -420,7 +420,7 @@ func watchNodes(clientset *kubernetes.Clientset, m *model) *v1.NodeList {
 			AddFunc: func(obj interface{}) {
 				node := obj.(*v1.Node)
 				Nodes.Items = append(Nodes.Items, *node)
-				m.updateLabelKeys()
+				m.updateTotalLabelKeys()
 			},
 			DeleteFunc: func(obj interface{}) {
 				node := obj.(*v1.Node)
@@ -430,7 +430,7 @@ func watchNodes(clientset *kubernetes.Clientset, m *model) *v1.NodeList {
 						break
 					}
 				}
-				m.updateLabelKeys()
+				m.updateTotalLabelKeys()
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				node := newObj.(*v1.Node)
@@ -440,7 +440,7 @@ func watchNodes(clientset *kubernetes.Clientset, m *model) *v1.NodeList {
 						break
 					}
 				}
-				m.updateLabelKeys()
+				m.updateTotalLabelKeys()
 			},
 		},
 	)
@@ -453,7 +453,7 @@ func watchNodes(clientset *kubernetes.Clientset, m *model) *v1.NodeList {
 }
 
 // TODO: rename to more descriptive name
-func (m *model) updateLabelKeys() {
+func (m *model) updateTotalLabelKeys() {
 	var labelKeys []LabelKey
 	for _, node := range Nodes.Items {
 		for key := range node.Labels {
