@@ -20,7 +20,9 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -198,22 +200,12 @@ func initialModel() model {
 	clientset, err := kubernetes.NewForConfig(config)
 	panicIfError(err)
 
-	Nodes, err = clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
-	panicIfError(err)
+	Nodes = watchNodes(clientset)
+	// Nodes, err = clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	// panicIfError(err)
 
 	// List all label key of nodes
-	var labelKeys []LabelKey
-	for _, node := range Nodes.Items {
-		for key := range node.Labels {
-			labelKey := NewLabelKey().WithName(key)
-			labelKeys = append(labelKeys, *labelKey)
-		}
-	}
-	uniqLabelKeys := uniqueKeys(labelKeys)
-	sort.Slice(uniqLabelKeys, func(i, j int) bool {
-		return uniqLabelKeys[i].Name < uniqLabelKeys[j].Name
-	})
-	LabelKeys = uniqLabelKeys
+	updateLabelKeys()
 
 	// Finder prompt
 	ti := textinput.New()
@@ -410,4 +402,75 @@ func sortedKeys(m NodeInfos) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+func watchNodes(clientset *kubernetes.Clientset) *v1.NodeList {
+	// Get initial list of nodes
+	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// Set up the watch
+	watchlist := cache.NewListWatchFromClient(clientset.CoreV1().RESTClient(), "nodes", "", fields.Everything())
+
+	_, controller := cache.NewInformer(
+		watchlist,
+		&v1.Node{},
+		0, // No resync
+		cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				node := obj.(*v1.Node)
+				// fmt.Println("Node added:", node.Name)
+				// Handle the added node
+				Nodes.Items = append(Nodes.Items, *node)
+				updateLabelKeys()
+			},
+			DeleteFunc: func(obj interface{}) {
+				node := obj.(*v1.Node)
+				// fmt.Println("Node deleted:", node.Name)
+				// Handle the deleted node
+				for i, n := range Nodes.Items {
+					if n.Name == node.Name {
+						Nodes.Items = append(Nodes.Items[:i], Nodes.Items[i+1:]...)
+						break
+					}
+				}
+				updateLabelKeys()
+			},
+			UpdateFunc: func(oldObj, newObj interface{}) {
+				node := newObj.(*v1.Node)
+				// fmt.Println("Node updated:", node.Name)
+				// Handle the updated node
+				for i, n := range Nodes.Items {
+					if n.Name == node.Name {
+						Nodes.Items[i] = *node
+						break
+					}
+				}
+				updateLabelKeys()
+			},
+		},
+	)
+
+	stop := make(chan struct{})
+	go controller.Run(stop)
+	// You might need to handle stopping this gracefully in your application
+
+	return nodes
+}
+
+func updateLabelKeys() {
+	var labelKeys []LabelKey
+	for _, node := range Nodes.Items {
+		for key := range node.Labels {
+			labelKey := NewLabelKey().WithName(key)
+			labelKeys = append(labelKeys, *labelKey)
+		}
+	}
+	uniqLabelKeys := uniqueKeys(labelKeys)
+	sort.Slice(uniqLabelKeys, func(i, j int) bool {
+		return uniqLabelKeys[i].Name < uniqLabelKeys[j].Name
+	})
+	LabelKeys = uniqLabelKeys
 }
