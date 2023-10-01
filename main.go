@@ -177,6 +177,7 @@ func MaxNodeNameLength(infos NodeInfos) int {
 /* Model */
 type model struct {
 	FilteredNodeInfos NodeInfos
+	TotalLabelKeys    []LabelKey
 	FilteredLabelKeys []LabelKey
 	Paginator         paginator.Model
 	TextInput         textinput.Model
@@ -184,11 +185,10 @@ type model struct {
 
 /* Global */
 var (
-	Nodes     *v1.NodeList
-	LabelKeys []LabelKey
+	Nodes *v1.NodeList // TODO: move to model
 )
 
-func initialModel() model {
+func initialModel() *model {
 	// Path to kubeconfig file
 	kubeconfig := flag.String("kubeconfig", filepath.Join(homeDir(), ".kube", "config"), "(optional) absolute path to the kubeconfig file")
 
@@ -200,12 +200,10 @@ func initialModel() model {
 	clientset, err := kubernetes.NewForConfig(config)
 	panicIfError(err)
 
-	Nodes = watchNodes(clientset)
-	// Nodes, err = clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
-	// panicIfError(err)
+	m := model{}
+	// m.updateLabelKeys()
 
-	// List all label key of nodes
-	updateLabelKeys()
+	Nodes = watchNodes(clientset, &m)
 
 	// Finder prompt
 	ti := textinput.New()
@@ -219,7 +217,7 @@ func initialModel() model {
 	p.PerPage = 10
 	p.ActiveDot = activeDot
 	p.InactiveDot = inactiveDot
-	p.SetTotalPages(len(LabelKeys))
+	p.SetTotalPages(len(m.TotalLabelKeys))
 
 	// Node names
 	nodeInfos := make(NodeInfos)
@@ -227,19 +225,19 @@ func initialModel() model {
 		nodeInfos[node.Name] = []LabelValue{}
 	}
 
-	return model{
-		FilteredNodeInfos: nodeInfos,
-		FilteredLabelKeys: LabelKeys,
-		Paginator:         p,
-		TextInput:         ti,
-	}
+	m.FilteredNodeInfos = nodeInfos
+	m.FilteredLabelKeys = m.TotalLabelKeys
+	m.Paginator = p
+	m.TextInput = ti
+
+	return &m
 }
 
-func (m model) Init() tea.Cmd {
+func (m *model) Init() tea.Cmd {
 	return nil
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -253,7 +251,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	m.TextInput, cmd = m.TextInput.Update(msg)
-	m.FilteredLabelKeys = FuzzyFindLabelKeys(m.TextInput.Value(), LabelKeys)
+	m.FilteredLabelKeys = FuzzyFindLabelKeys(m.TextInput.Value(), m.TotalLabelKeys)
 	m.FilteredNodeInfos = FilterNodeInfos(m.FilteredLabelKeys, m.FilteredNodeInfos)
 	m.Paginator.SetTotalPages(len(m.FilteredLabelKeys))
 
@@ -404,7 +402,7 @@ func sortedKeys(m NodeInfos) []string {
 	return keys
 }
 
-func watchNodes(clientset *kubernetes.Clientset) *v1.NodeList {
+func watchNodes(clientset *kubernetes.Clientset, m *model) *v1.NodeList {
 	// Get initial list of nodes
 	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
@@ -421,34 +419,28 @@ func watchNodes(clientset *kubernetes.Clientset) *v1.NodeList {
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				node := obj.(*v1.Node)
-				// fmt.Println("Node added:", node.Name)
-				// Handle the added node
 				Nodes.Items = append(Nodes.Items, *node)
-				updateLabelKeys()
+				m.updateLabelKeys()
 			},
 			DeleteFunc: func(obj interface{}) {
 				node := obj.(*v1.Node)
-				// fmt.Println("Node deleted:", node.Name)
-				// Handle the deleted node
 				for i, n := range Nodes.Items {
 					if n.Name == node.Name {
 						Nodes.Items = append(Nodes.Items[:i], Nodes.Items[i+1:]...)
 						break
 					}
 				}
-				updateLabelKeys()
+				m.updateLabelKeys()
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				node := newObj.(*v1.Node)
-				// fmt.Println("Node updated:", node.Name)
-				// Handle the updated node
 				for i, n := range Nodes.Items {
 					if n.Name == node.Name {
 						Nodes.Items[i] = *node
 						break
 					}
 				}
-				updateLabelKeys()
+				m.updateLabelKeys()
 			},
 		},
 	)
@@ -460,7 +452,8 @@ func watchNodes(clientset *kubernetes.Clientset) *v1.NodeList {
 	return nodes
 }
 
-func updateLabelKeys() {
+// TODO: rename to more descriptive name
+func (m *model) updateLabelKeys() {
 	var labelKeys []LabelKey
 	for _, node := range Nodes.Items {
 		for key := range node.Labels {
@@ -468,9 +461,13 @@ func updateLabelKeys() {
 			labelKeys = append(labelKeys, *labelKey)
 		}
 	}
-	uniqLabelKeys := uniqueKeys(labelKeys)
-	sort.Slice(uniqLabelKeys, func(i, j int) bool {
-		return uniqLabelKeys[i].Name < uniqLabelKeys[j].Name
+
+	// uniq
+	labelKeys = uniqueKeys(labelKeys)
+	// sort
+	sort.Slice(labelKeys, func(i, j int) bool {
+		return labelKeys[i].Name < labelKeys[j].Name
 	})
-	LabelKeys = uniqLabelKeys
+
+	m.TotalLabelKeys = labelKeys
 }
