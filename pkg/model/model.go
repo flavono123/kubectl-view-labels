@@ -15,6 +15,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lithammer/fuzzysearch/fuzzy"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -111,11 +112,22 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	m.textInput, cmd = m.textInput.Update(msg)
-	m.filteredLabelKeys = FuzzyFindLabelKeys(m.textInput.Value(), m.totalLabelKeys)
+	m.fuzzyFindLabelKeys(m.textInput.Value())
 	m.filterNodeInfos()
 	m.paginator.SetTotalPages(len(m.filteredLabelKeys))
 
 	return m, cmd
+}
+
+func (m *model) fuzzyFindLabelKeys(input string) {
+	var results []LabelKey
+	for _, key := range m.totalLabelKeys {
+		if fuzzy.Match(input, key.Name) {
+			results = append(results, key)
+		}
+	}
+
+	m.filteredLabelKeys = results
 }
 
 const (

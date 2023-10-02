@@ -2,7 +2,6 @@ package model
 
 import (
 	"github.com/charmbracelet/lipgloss"
-	"github.com/lithammer/fuzzysearch/fuzzy"
 )
 
 type LabelKey struct {
@@ -43,14 +42,4 @@ func LabelKeyNames(keys []LabelKey) []string {
 		names = append(names, key.Name)
 	}
 	return names
-}
-
-func FuzzyFindLabelKeys(input string, keys []LabelKey) []LabelKey {
-	var results []LabelKey
-	for _, key := range keys {
-		if fuzzy.Match(input, key.Name) {
-			results = append(results, key)
-		}
-	}
-	return results
 }
