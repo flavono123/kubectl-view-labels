@@ -33,13 +33,13 @@ type model struct {
 	textInput         textinput.Model
 }
 
-func (m *model) filterNodeInfos(keys []LabelKey) {
+func (m *model) filterNodeInfos() {
 	filteredNodeInfos := NewNodeInfos()
-	labeKeyNames := LabelKeyNames(keys)
+	labeKeyNames := LabelKeyNames(m.filteredLabelKeys)
 	for _, node := range m.nodes.Items {
 		for key := range node.Labels {
 			if contains(labeKeyNames, key) {
-				for _, key := range keys {
+				for _, key := range m.filteredLabelKeys {
 					labelValue := NewLabelValue().WithName(node.Labels[key.Name]).WithKey(key)
 					filteredNodeInfos.appendLabelValueTo(node.Name, labelValue)
 				}
@@ -112,7 +112,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	m.textInput, cmd = m.textInput.Update(msg)
 	m.filteredLabelKeys = FuzzyFindLabelKeys(m.textInput.Value(), m.totalLabelKeys)
-	m.filterNodeInfos(m.filteredLabelKeys)
+	m.filterNodeInfos()
 	m.paginator.SetTotalPages(len(m.filteredLabelKeys))
 
 	return m, cmd
