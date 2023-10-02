@@ -24,7 +24,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-/* Model */
 type model struct {
 	nodes             *v1.NodeList
 	filteredNodeInfos *nodeInfos
@@ -34,23 +33,33 @@ type model struct {
 	textInput         textinput.Model
 }
 
-func (m *model) filterNodeInfos() {
-	filteredNodeInfos := NewNodeInfos()
-	labeKeyNames := LabelKeyNames(m.filteredLabelKeys)
-	for _, node := range m.nodes.Items {
-		for key := range node.Labels {
-			if contains(labeKeyNames, key) {
-				for _, key := range m.filteredLabelKeys {
-					labelValue := NewLabelValue().WithName(node.Labels[key.Name]).WithKey(key)
-					filteredNodeInfos.appendLabelValueTo(node.Name, labelValue)
-				}
-				break
-			}
-		}
-	}
+const (
+	// Layout
+	searchModelWidth = 40
+	resultModelWidth = 120
+	commonHeight     = 20
 
-	m.filteredNodeInfos = filteredNodeInfos
-}
+	// Colors
+	searchPromptColor = "#D4BFFF"
+)
+
+var (
+	searchPromptStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color(searchPromptColor))
+
+	searcherModelStyle = lipgloss.NewStyle().
+				Width(searchModelWidth).
+				Height(commonHeight).
+				MarginRight(2)
+
+	resultModelStyle = lipgloss.NewStyle().
+				Width(resultModelWidth).
+				Height(commonHeight)
+
+	helpStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).Render
+	activeDot   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Render("•")
+	inactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render("•")
+)
 
 func InitialModel() *model {
 	// Path to kubeconfig file
@@ -112,15 +121,17 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	m.textInput, cmd = m.textInput.Update(msg)
-	m.fuzzyFindLabelKeys(m.textInput.Value())
-	m.filterNodeInfos()
+	m.updateFilteredLabelKeys(m.textInput.Value())
+	m.updateNodeInfos()
 	m.paginator.SetTotalPages(len(m.filteredLabelKeys))
 
 	return m, cmd
 }
 
-func (m *model) fuzzyFindLabelKeys(input string) {
+func (m *model) updateFilteredLabelKeys(input string) {
 	var results []LabelKey
+
+	// fuzzy find for each label key
 	for _, key := range m.totalLabelKeys {
 		if fuzzy.Match(input, key.Name) {
 			results = append(results, key)
@@ -130,33 +141,25 @@ func (m *model) fuzzyFindLabelKeys(input string) {
 	m.filteredLabelKeys = results
 }
 
-const (
-	// Layout
-	searchModelWidth = 40
-	resultModelWidth = 120
-	commonHeight     = 20
+func (m *model) updateNodeInfos() {
+	filteredNodeInfos := NewNodeInfos()
+	labeKeyNames := LabelKeyNames(m.filteredLabelKeys)
 
-	// Colors
-	searchPromptColor = "#D4BFFF"
-)
+	// update node infos filter by filtered label keys
+	for _, node := range m.nodes.Items {
+		for key := range node.Labels {
+			if contains(labeKeyNames, key) {
+				for _, key := range m.filteredLabelKeys {
+					labelValue := NewLabelValue().WithName(node.Labels[key.Name]).WithKey(key)
+					filteredNodeInfos.appendLabelValueTo(node.Name, labelValue)
+				}
+				break
+			}
+		}
+	}
 
-var (
-	searchPromptStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(searchPromptColor))
-
-	searcherModelStyle = lipgloss.NewStyle().
-				Width(searchModelWidth).
-				Height(commonHeight).
-				MarginRight(2)
-
-	resultModelStyle = lipgloss.NewStyle().
-				Width(resultModelWidth).
-				Height(commonHeight)
-
-	helpStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).Render
-	activeDot   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Render("•")
-	inactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render("•")
-)
+	m.filteredNodeInfos = filteredNodeInfos
+}
 
 func (m model) View() string {
 	start, end := m.paginator.GetSliceBounds(len(m.filteredLabelKeys))
