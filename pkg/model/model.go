@@ -256,6 +256,12 @@ func watchNodes(clientset *kubernetes.Clientset, m *model) *v1.NodeList {
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				node := obj.(*v1.Node)
+				// only add for new one
+				for _, n := range m.nodes.Items {
+					if n.Name == node.Name {
+						return // if not, early return
+					}
+				}
 				m.nodes.Items = append(m.nodes.Items, *node)
 				m.updateTotalLabelKeys()
 			},
