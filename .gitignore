@@ -1,9 +1,9 @@
-# Asciinema cast and gif for temp
-*.cast
-*.gif
-
 # Binaries
 build/
 
 # MacOS
 .DS_Store
+
+# Demo assets except for the GIF in README
+demo/
+!demo/k-view-labels-demo.gif

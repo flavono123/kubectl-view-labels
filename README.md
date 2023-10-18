@@ -1,8 +1,12 @@
-# kubectl-view_labels
+# `view-labels`
+
+## *`show-labels` suck,  you can `view-labels` fastly and exactly*
+
+![demo](demo/k-view-labels.gif)
 
 A krew plugin to search with label keys for a resource.
 
-## Installation
+## Install
 
 ```sh
 kubectl krew add
