@@ -5,5 +5,5 @@ build/
 .DS_Store
 
 # Demo assets except for the GIF in README
-demo/
+demo/*
 !demo/k-view-labels.gif
