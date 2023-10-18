@@ -1,7 +1,7 @@
 .PHONY: all build-linux build-windows build-darwin-amd64 build-darwin-arm64
 
 BINARY_NAME=kubectl-view_labels
-VERSION=v0.0.1
+VERSION=v0.1.0
 
 all: build-linux build-windows build-darwin-amd64 build-darwin-arm64
 
