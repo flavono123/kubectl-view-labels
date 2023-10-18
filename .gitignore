@@ -4,3 +4,6 @@
 
 # Binaries
 build/
+
+# MacOS
+.DS_Store
