@@ -1,6 +1,6 @@
 # `kubectl view-labels`: *`show-labels` sucks,  you can `view-labels` fastly and exactly*
 
-![demo](demo/k-view-labels.gif)
+![demo](assets/demo/k-view-labels.gif)
 
 A krew plugin to search resouces and label values with keys.
 
