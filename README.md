@@ -1,4 +1,4 @@
-# `kubectl view-labels`: *`show-labels` sucks,  you can `view-labels` fastly and exactly*
+# `kubectl view-labels`: *`show-labels` sucks,  you can `view-labels` fast and exactly*
 
 ![demo](assets/demo/k-view-labels.gif)
 
